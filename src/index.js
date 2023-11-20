@@ -151,7 +151,7 @@ app.post("/get/school/v1", (req, res) => {
     let email = req.body.email
     let password = req.body.password
     if (!email || !password) {
-        return res.status(400).json({ message: " Empty field detected. Please provide the required information." });
+        return res.status(400).json({ message: "Empty field detected. Please provide the required information." });
     }
     try {
         GenerateSchools.findOne({ email: email }).then((result) => {
@@ -187,7 +187,6 @@ app.get("/verifytoken", (req, res) => {
             let email = decoded.email
             if (decoded != undefined) {
                 GenerateSchools.findOne({ email: email }).then((result) => {
-                    // console.log(result)
                     res.status(200).send({ status: true, data: result })
                 })
             } else {
@@ -196,6 +195,8 @@ app.get("/verifytoken", (req, res) => {
         }
     })
 })
+
+
 
 
 
@@ -223,7 +224,8 @@ const noticeSchema = mongoose.Schema({
     },
     date: String,
     time: String,
-    sender: String
+    sender: String,
+    senderEmail: String
 })
 const noticeModel = mongoose.models.notices || mongoose.model("notices", noticeSchema)
 // Notice to all
@@ -580,11 +582,69 @@ app.get("/get/teachers", async (req, res, next) => {
     })
 });
 
+// Login Teacher
+app.post("/auth/teacher", (req, res) => {
+    const {email, password} = req.body;
+    if (!email || !password) {
+        return res.status(400).json({ message: "Empty field detected. Please provide the required information." });
+    }
+    
+    teacherModels.findOne({ email: email }).then((result) => {
+        if (result == null) {
+            res.status(409).send({ message: "You do not have an account with us" })
+        } else {
+            if (password == result.password) {
+                const token = jsonwebtoken.sign({ email }, SECRET, { expiresIn: "1d" })
+                // console.log(token);
+                res.status(201).send({ admin: result, status: true, message: "Valid Authentication", token: token })
+            } else {
+                res.status(401).send({ status: false, message: "Invalid Password" })
+            }
+        }
+    }).catch((err) => {
+        res.status(401).send({ message: "Internal Server Error" })
+        // console.log(err)
+    })
+})
 
 
 
+// Verify Token Teacher
+app.get("/teacher/verifytoken", (req, res) => {
+    const token = req.headers.authorization.split(" ")[1]
+    jsonwebtoken.verify(token, SECRET, (error, decoded) => {
+        if (error) {
+            res.status(401).send({ message: "Session Over. You will be logged out right now.", status: false })
+            // console.log(error)
+        } else {
+            // console.log(decoded)
+            let email = decoded.email
+            if (decoded != undefined) {
+                teacherModels.findOne({ email: email }).then((result) => {
+                    res.status(200).send({ status: true, data: result })
+                })
+            } else {
+                res.status(401).send({ message: "Unauthorized", status: false })
+            }
+        }
+    })
+})
 
 
+// Get Teacher Notice
+app.get("/get/teacher/notice", (req, res) => {
+    let {senderEmail} = req.query.params;
+   
+    noticeModel.find({ senderEmail }).then((result) => {
+        let to = result.to
+        if(!result.length > 0){
+            
+        }
+        // res.status(201).send({ notice: result, status: true })
+    }).catch((error) => {
+        res.status(401).send({ error: error, status: false })
+    })
+})
 
 
 app.listen(port, () => {
