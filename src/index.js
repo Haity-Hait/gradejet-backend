@@ -490,11 +490,12 @@ const teacherModels = mongoose.models.teachers || mongoose.model("teachers", tea
 app.post("/generate/teacher", (req, res) => {
     let data = req.body
     let email = data.email
+    let schoolEmail = data.schoolEmail
     let form = teacherModels(data)
     if (!email || !data.password || !data.dob || !data.course || !data.name) {
         return res.status(400).json({ message: " Empty field detected. Please provide the required information." });
     }
-    teacherModels.find({ email: email }).then((resultss) => {
+    teacherModels.find({ email: email, schoolEmail: schoolEmail }).then((resultss) => {
         if (resultss.length > 0) {
             res.status(401).send({ message: "Teacher's email already exist." })
         } else {
@@ -588,14 +589,12 @@ app.post("/auth/teacher", (req, res) => {
     if (!email || !password) {
         return res.status(400).json({ message: "Empty field detected. Please provide the required information." });
     }
-    
     teacherModels.findOne({ email: email }).then((result) => {
         if (result == null) {
             res.status(409).send({ message: "You do not have an account with us" })
         } else {
             if (password == result.password) {
                 const token = jsonwebtoken.sign({ email }, SECRET, { expiresIn: "1d" })
-                // console.log(token);
                 res.status(201).send({ admin: result, status: true, message: "Valid Authentication", token: token })
             } else {
                 res.status(401).send({ status: false, message: "Invalid Password" })
@@ -632,21 +631,27 @@ app.get("/teacher/verifytoken", (req, res) => {
 
 
 // Get Teacher Notice
-app.get("/get/teacher/notice", (req, res) => {
-    let {senderEmail} = req.query.params;
-   
-    noticeModel.find({ senderEmail }).then((result) => {
-        let to = result.to
-        if(!result.length > 0){
-            
-        }
-        // res.status(201).send({ notice: result, status: true })
+app.post("/get/teacher/notice", (req, res) => {
+    const {senderEmail} = req.body;
+    console.log(senderEmail, "senderEmail");
+    noticeModel.find({ to: "teachers", senderEmail: senderEmail }).then((result) => {
+        res.status(201).send({ notice: result, status: true })
     }).catch((error) => {
         res.status(401).send({ error: error, status: false })
     })
 })
 
 
+// GET TEACHER Student
+app.post("/get/teacher/students", async (req, res, next) => {
+    const {schoolName, course} = req.body; // Extract 'schoolName' property from the request body
+    await studentModel.find({ schoolName: schoolName, course: course }).then((result) => {
+        console.log(result);
+        res.status(200).send({ message: result })
+    }).catch((err) => {
+        res.status(500).send({ message: "An error occurred while fetching courses." })
+    })
+});
 app.listen(port, () => {
     console.log(`App running on port ${port}`)
 })
