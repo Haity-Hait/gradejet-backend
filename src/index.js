@@ -146,6 +146,10 @@ app.get("/get/school", (req, res) => {
     })
 })
 
+
+
+
+
 // Get One School || Signin Admin
 app.post("/get/school/v1", (req, res) => {
     let email = req.body.email
@@ -285,12 +289,13 @@ app.post("/courses", async (req, res, next) => {
     const schoolName = req.body.schoolName;
     const data = req.body;
     const courseName = data.courseName;
+    const schoolEmail = data.schoolEmail;
     const form = CourseModel(data);
     try {
         if (!courseName || !data.courseTimePerDay || !data.courseType || !data.courseDuration) {
             return res.status(400).json({ message: " Empty field detected. Please provide the required information." });
         }
-        const result = await CourseModel.find({ schoolName: schoolName });
+        const result = await CourseModel.find({ schoolEmail: schoolEmail });
         if (result && result.length > 0) {
             let courseExists = false;
             lodash.filter(result, (val) => {
@@ -305,9 +310,7 @@ app.post("/courses", async (req, res, next) => {
                 return res.status(401).send({ message: `${courseName} already exists in the school.` });
             }
         }
-        if(!courseName){
-            // console.log("Weeee");
-        }
+
         form.save().then((result3) => {
             // console.log(result3);
             res.status(200).send({ message: `${courseName} added successfully.` });
@@ -325,17 +328,28 @@ app.post("/courses", async (req, res, next) => {
 app.get("/get/courses", async (req, res, next) => {
     const schoolName = req.query.schoolName; // Extract 'schoolName' property from the request body
     await CourseModel.find({ schoolName: schoolName })
-      .then((result) => {
-        // if(result.length <= 0){
-        //     res.status(200).send({message: "You Do not have any course currently."})
-        // }
-        res.status(200).send({ message: result });
-      })
-      .catch((err) => {
-        res.status(500).send({ message: "An error occurred while fetching courses." });
-      });
+        .then((result) => {
+            // if(result.length <= 0){
+            //     res.status(200).send({message: "You Do not have any course currently."})
+            // }
+            res.status(200).send({ message: result });
+        })
+        .catch((err) => {
+            res.status(500).send({ message: "An error occurred while fetching courses." });
+        });
 });
-  
+
+app.get("/get/yoursch", async (req, res, next) => {
+    const schoolEmail = req.query.schoolEmail; // Extract 'schoolName' property from the request body
+    await GenerateSchools.find({ email: schoolEmail })
+        .then((result) => {
+            res.status(200).send({ message: result });
+        })
+        .catch((err) => {
+            res.status(500).send({ message: "An error occurred while fetching courses." });
+        });
+});
+
 
 
 // STUDENT GENERATE
@@ -456,15 +470,61 @@ app.post("/generate/student", (req, res) => {
 
 // GET STUDENT
 app.get("/get/students", async (req, res, next) => {
-    const schoolName = req.query.schoolName; // Extract 'schoolName' property from the request body
-    // console.log(schoolName);
-    await studentModel.find({ schoolName: schoolName }).then((result) => {
+    const schoolEmail = req.query.schoolEmail; // Extract 'schoolName' property from the request body
+    await studentModel.find({ schoolEmail: schoolEmail }).then((result) => {
         console.log(result);
         res.status(200).send({ message: result })
     }).catch((err) => {
         res.status(500).send({ message: "An error occurred while fetching courses." })
     })
 });
+
+// Login Student
+app.post("/auth/student", (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+        return res.status(400).json({ message: "Empty field detected. Please provide the required information." });
+    }
+    studentModel.findOne({ email: email }).then((result) => {
+        if (result == null) {
+            res.status(409).send({ message: "You do not have an account with us" })
+        } else {
+            if (password == result.password) {
+                const token = jsonwebtoken.sign({ email }, SECRET, { expiresIn: "1d" })
+                res.status(201).send({ admin: result, status: true, message: "Valid Authentication", token: token })
+            } else {
+                res.status(401).send({ status: false, message: "Invalid Password" })
+            }
+        }
+    }).catch((err) => {
+        res.status(401).send({ message: "Internal Server Error" })
+        // console.log(err)
+    })
+})
+
+
+
+// Verify Token Teacher
+app.get("/student/verifytoken", (req, res) => {
+    const token = req.headers.authorization.split(" ")[1]
+    jsonwebtoken.verify(token, SECRET, (error, decoded) => {
+        if (error) {
+            res.status(401).send({ message: "Session Over. You will be logged out right now.", status: false })
+        } else {
+            let email = decoded.email
+            if (decoded != undefined) {
+                studentModel.findOne({ email: email }).then((result) => {
+                    res.status(200).send({ status: true, data: result })
+                })
+            } else {
+                res.status(401).send({ message: "Unauthorized", status: false })
+            }
+        }
+    })
+})
+
+
+
 
 // TEACHER
 // GET ALL TEACHER
@@ -487,38 +547,47 @@ const teacherSchema = mongoose.Schema({
     schoolName: String
 })
 const teacherModels = mongoose.models.teachers || mongoose.model("teachers", teacherSchema)
-app.post("/generate/teacher", (req, res) => {
-    let data = req.body
-    let email = data.email
-    let schoolEmail = data.schoolEmail
-    let form = teacherModels(data)
-    if (!email || !data.password || !data.dob || !data.course || !data.name) {
-        return res.status(400).json({ message: " Empty field detected. Please provide the required information." });
+app.post("/generate/teacher", async(req, res) => {
+    const requestData = req.body;
+    const email = requestData.email;
+    const name = requestData.name;
+    const schoolEmail = requestData.schoolEmail;
+    const newTeacher = teacherModels(requestData);
+    if (!email || !requestData.password || !requestData.dob || !requestData.course || !name) {
+        return res.status(400).json({ message: "Empty field detected. Please provide the required information." });
     }
-    teacherModels.find({ email: email, schoolEmail: schoolEmail }).then((resultss) => {
-        if (resultss.length > 0) {
-            res.status(401).send({ message: "Teacher's email already exist." })
-        } else {
-            form.save().then((result) => {
-                try {
-                    const transporter = nodemailer.createTransport({
-                        service: "gmail",
-                        auth: {
-                            user: process.env.EMAIL,
-                            pass: process.env.PASSWORD
-                        }
-                    });
-                    const template = `
+
+    // const existingTeachers = await teacherModels.find({ schoolEmail: schoolEmail });
+    // if (existingTeachers && existingTeachers.length > 0) {
+    //     // Checking if the current teacher already exists in the school
+    //     const teacherExists = existingTeachers.some((teacher) => teacher.email === email);
+    
+    //     // If the teacher already exists, return an appropriate response
+    //     if (teacherExists) {
+    //         return res.status(401).send({ message: `${name} is a teacher in this school already.` });
+    //     }
+    // }
+    // newTeacher.schoolEmail = schoolEmail;
+    newTeacher.save().then((result) => {
+        try {
+            const transporter = nodemailer.createTransport({
+                service: "gmail",
+                auth: {
+                    user: process.env.EMAIL,
+                    pass: process.env.PASSWORD
+                }
+            });
+            const template = `
                         <div
                         style=" background-color: #f3f2ef; width: 100%; height: 100vh; display: flex; align-items: center; justify-content: center;">
                         <div
                             style="font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; background-color: white; width: 500px; padding: 20px; box-shadow: 2px 3px 100px rgba(0, 0, 0, 0.178); border-radius: 8px; margin: auto;">
-                            <h1>Dear, ${data.initial} ${data.name}, </h1>
+                            <h1>Dear, ${requestData.initial} ${requestData.name}, </h1>
                             <div style="margin-top: 30px; font-size: 20px;">
                                 <p>
                                     You must have been longing to have this message, Well we have reviewed your application and you are one of the eligible applicant for this role.
                                     <br/>
-                                    In a word you have been successfully appointed as a staff in ${data.schoolName}.
+                                    In a word you have been successfully appointed as a staff in ${requestData.schoolName}.
                                     <br/>
                                     As a school we make use of a school management system which is ,<a href="#">Gradejet.com</a> for online interactions and grading of our students .
                                 </p>
@@ -526,56 +595,52 @@ app.post("/generate/teacher", (req, res) => {
                                 <b>Here's your Login Details to the grading system website.</b>
                                 <br>
                                 <strong>
-                                    Teacher ID: ${data.teacherId}
+                                    Teacher ID: ${requestData.teacherId}
                                 </strong>
                                 <br>
                                 <br>
                                 <strong>
-                                    Password: ${data.password}
+                                    Password: ${requestData.password}
                                 </strong>
                             </div>
                         </div>
                     </div>
                         `
-                    const mailOptions = {
-                        from: process.env.EMAIL,
-                        to: data.email,
-                        subject: "GradeJet School Management System",
-                        html: template
+            const mailOptions = {
+                from: process.env.EMAIL,
+                to: requestData.email,
+                subject: "GradeJet School Management System",
+                html: template
 
-                    };
+            };
 
-                    transporter.sendMail(mailOptions, (error, info) => {
-                        if (error) {
-                            res.status(401).send({ status: 401, error })
-                        } else {
-                            res.status(201).send({ status: 201, info })
-                        }
-                    })
-
-                } catch (error) {
+            transporter.sendMail(mailOptions, (error, info) => {
+                if (error) {
                     res.status(401).send({ status: 401, error })
+                } else {
+                    res.status(201).send({ status: 201, info })
                 }
-                console.log(result);
-                res.status(201).send({ message: `${data.name} Account Created`, status: 201 })
-            }).catch((err) => {
-                console.log(err);
-                res.status(401).send({ message: `Validation Error` })
             })
+
+        } catch (error) {
+            res.status(401).send({ status: 401, error })
         }
+        console.log(result);
+        res.status(201).send({ message: `${requestData.name} Account Created`, status: 201 })
     }).catch((err) => {
         console.log(err);
+        res.status(401).send({ message: `Validation Error` })
     })
-    // res.status(401).send({ message: "Internal server error" })
+
 })
 
 
 // GET TEACHERS
 
 app.get("/get/teachers", async (req, res, next) => {
-    const schoolName = req.query.schoolName; // Extract 'schoolName' property from the request body
-    console.log(schoolName);
-    await teacherModels.find({ schoolName: schoolName }).then((result) => {
+    const schoolEmail = req.query.schoolEmail; // Extract 'schoolName' property from the request body
+    console.log(schoolEmail);
+    await teacherModels.find({ schoolEmail: schoolEmail }).then((result) => {
         console.log(result);
         res.status(200).send({ message: result })
     }).catch((err) => {
@@ -585,7 +650,7 @@ app.get("/get/teachers", async (req, res, next) => {
 
 // Login Teacher
 app.post("/auth/teacher", (req, res) => {
-    const {email, password} = req.body;
+    const { email, password } = req.body;
     if (!email || !password) {
         return res.status(400).json({ message: "Empty field detected. Please provide the required information." });
     }
@@ -632,7 +697,7 @@ app.get("/teacher/verifytoken", (req, res) => {
 
 // Get Teacher Notice
 app.post("/get/teacher/notice", (req, res) => {
-    const {senderEmail} = req.body;
+    const { senderEmail } = req.body;
     console.log(senderEmail, "senderEmail");
     noticeModel.find({ to: "teachers", senderEmail: senderEmail }).then((result) => {
         res.status(201).send({ notice: result, status: true })
@@ -644,7 +709,7 @@ app.post("/get/teacher/notice", (req, res) => {
 
 // GET TEACHER Student
 app.post("/get/teacher/students", async (req, res, next) => {
-    const {schoolName, course} = req.body; // Extract 'schoolName' property from the request body
+    const { schoolName, course } = req.body; // Extract 'schoolName' property from the request body
     await studentModel.find({ schoolName: schoolName, course: course }).then((result) => {
         console.log(result);
         res.status(200).send({ message: result })
