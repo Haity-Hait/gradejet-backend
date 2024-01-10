@@ -8,13 +8,14 @@ const port = 1516;
 const mongoose = require("mongoose");
 const jsonwebtoken = require("jsonwebtoken");
 const bodyParser = require("body-parser");
+const DepartmentRouter = require("../routes/departmentRoutes");
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }))
 const SECRET = process.env.JWT_SECRET
 // middle ware
 app.use(express.json());
 app.use(cors());
-
+app.use("/", DepartmentRouter)
 function connect() {
     try {
         mongoose.connect(process.env.URI).then(() => {
@@ -370,7 +371,8 @@ const studentSchema = mongoose.Schema({
     payments: [],
     documents: [],
     stateOfOrigin: String,
-    schoolLink: String
+    schoolLink: String,
+    schoolLogo: String
 })
 
 const studentModel = mongoose.models.students || mongoose.model("students", studentSchema)
@@ -498,7 +500,6 @@ app.post("/auth/student", (req, res) => {
         }
     }).catch((err) => {
         res.status(401).send({ message: "Internal Server Error" })
-        // console.log(err)
     })
 })
 
@@ -717,6 +718,8 @@ app.post("/get/teacher/students", async (req, res, next) => {
         res.status(500).send({ message: "An error occurred while fetching courses." })
     })
 });
+
+
 app.listen(port, () => {
     console.log(`App running on port ${port}`)
 })
