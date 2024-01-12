@@ -26,5 +26,12 @@ const createDepartment = (req, res) => {
   
 }
 
+const getSchoolDepartment = (req, res) => {
+    const {schoolEmail} = req.body;
+    DepartmentModel.find({schoolEmail}).then((result) => {
+        res.status(201).send({result})
+    })
+}
 
-module.exports = {createDepartment}
+
+module.exports = {createDepartment, getSchoolDepartment}
