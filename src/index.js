@@ -9,13 +9,22 @@ const mongoose = require("mongoose");
 const jsonwebtoken = require("jsonwebtoken");
 const bodyParser = require("body-parser");
 const DepartmentRouter = require("../routes/departmentRoutes");
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }))
 const SECRET = process.env.JWT_SECRET
+
 // middle ware
 app.use(express.json());
-app.use(cors());
+app.use(cors({ origin: "*" }));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }))
+app.use(bodyParser.json({ limit: '100mb' }))
+app.use(bodyParser.urlencoded({ extended: true, limit:"100mb" }));
+
+
+
+// Routes
 app.use("/", DepartmentRouter)
+
+
 function connect() {
     try {
         mongoose.connect(process.env.URI).then(() => {
