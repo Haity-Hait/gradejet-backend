@@ -30,6 +30,8 @@ const getSchoolDepartment = (req, res) => {
     const {schoolEmail} = req.body;
     DepartmentModel.find({schoolEmail}).then((result) => {
         res.status(201).send({result})
+    }).catch((err) => {
+        res.status(401).send({err})
     })
 }
 
