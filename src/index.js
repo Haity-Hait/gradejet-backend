@@ -336,8 +336,8 @@ app.post("/courses", async (req, res, next) => {
 
 // Get courses for a school
 app.get("/get/courses", async (req, res, next) => {
-    const schoolEmail = req.query.schoolEmail; // Extract 'schoolEmail' property from the request body
-    await CourseModel.find({ schoolEmail: schoolEmail })
+    const schoolName = req.query.schoolName; // Extract 'schoolName' property from the request body
+    await CourseModel.find({ schoolName: schoolName })
         .then((result) => {
             // if(result.length <= 0){
             //     res.status(200).send({message: "You Do not have any course currently."})
