@@ -9,6 +9,7 @@ const mongoose = require("mongoose");
 const jsonwebtoken = require("jsonwebtoken");
 const bodyParser = require("body-parser");
 const DepartmentRouter = require("../routes/departmentRoutes");
+const studentRouter = require("../routes/studentRoutes");
 const SECRET = process.env.JWT_SECRET
 
 // middle ware
@@ -23,6 +24,7 @@ app.use(bodyParser.urlencoded({ extended: true, limit:"100mb" }));
 
 // Routes
 app.use("/", DepartmentRouter)
+app.use("/", studentRouter)
 
 
 function connect() {
