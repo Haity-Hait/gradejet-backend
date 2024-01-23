@@ -12,7 +12,7 @@ const addSelectedCourse = (req, res) => {
     }).then((result) => {
         res.status(201).send("Saved Successfully")
     }).catch((err) => {
-        res.status(401).send("Saved Successfully")
+        res.status(401).send("You've added your courses already.")
     })
 }
 
