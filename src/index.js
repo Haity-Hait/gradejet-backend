@@ -111,6 +111,7 @@ app.post("/generate/school", (req, res, next) => {
                         <p>Your school has been approved by GradeJet Management System.</p>
                         <p>Here's Your Login Details to the website.</p>
                         <p>Password: ${data.password}</p>
+                        <p>Gradejet: <a href="gradejet.vercel.app">gradejet.vercel.app</a></p>
                         <code>Signed by management.</code>
                     `
                     // Send Mail
@@ -452,6 +453,8 @@ app.post("/generate/student", (req, res) => {
                     <br/>
                     <br/>
                     Welcome to the ${data.schoolName} family! Your journey towards academic excellence and personal growth starts now.
+                   Heres your password to the GradeJet Application ${data.password}.
+                   Gradejet: <a href="gradejet.vercel.app">gradejet.vercel.app</a>
                     <br/>
                     <br/>
                     Best regards,
@@ -613,6 +616,7 @@ app.post("/generate/teacher", async(req, res) => {
                                 <br>
                                 <strong>
                                     Password: ${requestData.password}
+                                    Gradejet: <a href="gradejet.vercel.app">gradejet.vercel.app</a>
                                 </strong>
                             </div>
                         </div>
